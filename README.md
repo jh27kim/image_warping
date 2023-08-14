@@ -15,13 +15,25 @@ For 2D transformation task, use any available dataset. Here we used [AFHQ datase
 
 ## Depth warping
 
-Supports depth warping given ground truth / predicted depth map.
+Supports depth warping given ground truth / predicted depth map. Many of the code is borrowed from [here](https://github.com/NagabhushanSN95/Pose-Warping)
+
+### Depth warping formulation
+
+$T_{src \rightarrow dst} = T_{src}^{-1} \cdot T_{dst}$
+
+$T_{proj} = K_{dst} \cdot T_{src \rightarrow dst}$
+
+$X_{reproj} = K_{src}^{-1} \cdot X_{src}$
+
+$X_{warped} = N(K_{dst} \cdot (T_{src}^{-1} \cdot T_{dst}) \cdot K_{src}^{-1} \cdot X_{src})$
+
 
 Ground truth depth map is hard to acquire in practice. 
 You can either extract depth from a mesh, or use 3D scanned depth map from publicly available dataset like [OmniObject3D](https://omniobject3d.github.io/).
 
 |                  Input image          |          360 3D object synthesis     |
 |:-------------------------------------:|:-------------------------------------:|
-| ![](https://github.com/jh27kim/image_warping/assets/58447982/e7ac2356-1609-48c2-ad72-a88f2e954cef) | ![](https://github.com/jh27kim/image_warping/assets/58447982/51943cf7-7cfc-4e61-a8fc-20983c65499d) | 
+| <img width="256" height="256" src="https://github.com/jh27kim/image_warping/assets/58447982/c0278d83-f5ee-461f-81b6-8797d9395466"> | ![](https://github.com/jh27kim/image_warping/assets/58447982/8b4e1589-0920-4363-87aa-11c9df1ad11d) | 
+| ![](https://github.com/jh27kim/image_warping/assets/58447982/3f75d86a-11ef-42c3-b2ba-81d8bbc56460) | ![](https://github.com/jh27kim/image_warping/assets/58447982/d3e9c7d0-f650-41b7-8ded-17297300240c) | 
 
-![ezgif com-resize](https://github.com/jh27kim/image_warping/assets/58447982/e655da4b-48a0-4a87-a2b6-401393c86d5a)
+

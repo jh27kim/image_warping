@@ -3,5 +3,7 @@ This repository provides 2D and 3D warping source codes.
 
 ## Image warping
 
+Supports $SE(2)
+
 ## Depth warping
 

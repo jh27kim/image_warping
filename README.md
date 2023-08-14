@@ -24,3 +24,4 @@ You can either extract depth from a mesh, or use 3D scanned depth map from publi
 |:-------------------------------------:|:-------------------------------------:|
 | ![](https://github.com/jh27kim/image_warping/assets/58447982/e7ac2356-1609-48c2-ad72-a88f2e954cef) | ![](https://github.com/jh27kim/image_warping/assets/58447982/51943cf7-7cfc-4e61-a8fc-20983c65499d) | 
 
+![ezgif com-resize](https://github.com/jh27kim/image_warping/assets/58447982/e655da4b-48a0-4a87-a2b6-401393c86d5a)

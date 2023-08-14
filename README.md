@@ -20,7 +20,10 @@ Ground truth depth map is hard to acquire in practice.
 You can either extract depth from a mesh, or use 3D scanned depth map from publicly available dataset like [OmniObject3D](https://omniobject3d.github.io/).
 
 <p align="center">
-  <img width='400' src=""/>
-  <img width='400' src="https://github.com/jh27kim/image_warping/assets/58447982/3e57fc5e-8bcf-4955-915e-17bf7e6628e2"/>
-  
+  <img width='400' src="https://github.com/jh27kim/image_warping/assets/58447982/e7ac2356-1609-48c2-ad72-a88f2e954cef"/>
+  <img width='400' src="https://github.com/jh27kim/image_warping/assets/58447982/525695c8-18f5-4950-a9e8-0e8158ff698f"/>
+</p>
+
+<p align="center">
+  <img width='400' src="https://github.com/jh27kim/image_warping/assets/58447982/51943cf7-7cfc-4e61-a8fc-20983c65499d"/>
 </p>

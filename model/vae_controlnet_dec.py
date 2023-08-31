@@ -11,6 +11,8 @@ import torch
 import numpy as np
 import torch.nn as nn
 from warper.so2_warper import SO2_warper
+import tyro
+from dataclasses import dataclass
 
 
 class VAE_controlNet_dec(SO2_warper):
@@ -107,18 +109,31 @@ class VAE_controlNet_dec(SO2_warper):
         )
         
         print(f"Saved current state {epoch} at {ckpt_path}")
-    
+
+
+@dataclass
+class VAE_controlnet_dec_config:
+   # Training config
+   device: int = 3
+
+   # Fine tuning 
+   finetune_decoder: bool = True
+   finetune_latent: bool = False
+   finetune_decoder_model: str = "controlnet_dec" # direct, controlnet, lora, controlnet_dec
+   control_layers: str = "all" # all, end
+   control_scale: float = 1.0
+   reset_decoder: bool = False # When finetuning/training from scratch a decoder
 
 if __name__ == "__main__":
     from torchinfo import summary
-    device = 1
-    vae = VAE_controlNet_dec()
+    config = tyro.cli(VAE_controlnet_dec_config)
+    vae = VAE_controlNet_dec(config)
 
     img = Image.open("/home/jh27kim/warp_latent/dataset/afhq/val/cat/image/flickr_cat_000008.jpg")
     img.save("./in.png")
     np_img = (np.array(img) / 255.0).astype(np.float32)
     torch_img = torch.tensor(np_img)
-    torch_img = torch_img.permute(2, 0, 1).unsqueeze(0).to(device)
+    torch_img = torch_img.permute(2, 0, 1).unsqueeze(0).to(config.device)
     print(torch.max(torch_img), torch.min(torch_img))
 
     # summary(vae, input_size=(1, 4, 64, 64))

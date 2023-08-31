@@ -14,11 +14,12 @@ from warper.so2_warper import SO2_warper
 class VAE_controlNet(SO2_warper):
     def __init__(self, 
                  config=None) -> None:
-        super().__init__(config)
         self.device = config.device
 
         self.autoencder_controlnet = AutoencoderKL_ControlNet.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="vae").to(self.device)
         self.autoencoder_pretrained = AutoencoderKL_Pretrained.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="vae").to(self.device)
+
+        super().__init__(config)
         
         # Enable ControlNet encoder/zero conv gradients
         for name, params in self.autoencder_controlnet.named_parameters():
@@ -41,8 +42,10 @@ class VAE_controlNet(SO2_warper):
         _params += self.autoencder_controlnet.get_parameters()
         return _params
 
-    def latent2image(self, latents, condition):
+    def latent2image(self, latents, tar_img):
         # NOTE: Image should be normalized -1 1
+        condition = self.autoencder_controlnet(tar_img) # Jaihoon 2023.07.10 Retrieve condition params
+        
         latents = 1 / self.autoencoder_pretrained.config.scaling_factor * latents
         latent_mid = latents + condition.pop() # Jaihoon 2023.07.10
 
@@ -51,15 +54,13 @@ class VAE_controlNet(SO2_warper):
 
         return imgs
 
-    def image2latent(self, src_img, tar_img):
+    def image2latent(self, src_img):
         # imgs: [B, 3, H, W]
-        condition = self.autoencder_controlnet(tar_img) # Jaihoon 2023.07.10 Retrieve condition params
-
         src_img = 2 * src_img - 1
         posterior = self.autoencoder_pretrained.encode(src_img).latent_dist
         latents = posterior.sample() * self.autoencoder_pretrained.config.scaling_factor
 
-        return latents, condition
+        return latents
 
         
     # def forward(self, x):

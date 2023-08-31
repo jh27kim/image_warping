@@ -20,21 +20,44 @@ class VAE_direct(SO2_warper):
         self.device = config.device
         self.autoencoder_pretrained = AutoencoderKL_Pretrained.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="vae").to(self.device)
 
-        # Freeze encoder, enable decoder
-        for name, param in self.autoencoder_pretrained.encoder.named_parameters():
-            param.requires_grad_(False)
-        for name, param in self.autoencoder_pretrained.decoder.named_parameters():
-            param.requires_grad_(True)
+        # Finetune encoder /  decoder
+        if config.finetune_encoder and config.finetune_decoder:
+            # Finetune both encoder and decoder
+            for name, param in self.autoencoder_pretrained.named_parameters():
+                param.requires_grad_(True)
+        else:
+            for name, param in self.autoencoder_pretrained.encoder.named_parameters():
+                param.requires_grad_(config.finetune_encoder)
+            for name, param in self.autoencoder_pretrained.decoder.named_parameters():
+                param.requires_grad_(config.finetune_decoder)
         
-        if config.reset_decoder:
-            print("WARNING: Reset decoder")
-            self.autoencoder_pretrained.decoder.apply(weight_reset)
+        # Reset encoder / decoder 
+        if config.reset_decoder and config.reset_encoder:
+            self.autoencoder_pretrained.apply(weight_reset)
+        else:
+            if config.reset_decoder:
+                print("WARNING: Reset decoder")
+                self.autoencoder_pretrained.decoder.apply(weight_reset)
+            if config.reset_encoder:
+                print("WARNING: Reset encoder")
+                self.autoencoder_pretrained.encoder.apply(weight_reset)
 
         super().__init__(config)
 
     def get_parameters(self):
         _param = []
-        print("Training parameters : VAE decoder")
+        if self.config.finetune_encoder and self.config.finetune_decoder:
+            print("Train both encoder and decoder")
+            _param += list(self.autoencoder_pretrained.parameters())
+
+        else:
+            if self.config.finetune_decoder:
+                print("Training decoder")
+                _param += list(self.autoencoder_pretrained.decoder.parameters())
+            elif self.config.finetune_encoder:
+                print("Training encoder")
+                _param += list(self.autoencoder_pretrained.encoder.parameters())
+
         _param += list(self.autoencoder_pretrained.decoder.parameters())
 
         return _param
@@ -54,7 +77,9 @@ class VAE_direct(SO2_warper):
         img = 2 * img - 1
 
         posterior = self.autoencoder_pretrained.encode(img).latent_dist
-        latents = posterior.sample() * self.autoencoder_pretrained.config.scaling_factor
+        # 2023.07.23 Jaihoon
+        # latents = posterior.sample() * self.autoencoder_pretrained.config.scaling_factor
+        latents = posterior.mode() * self.autoencoder_pretrained.config.scaling_factor
 
         return latents
 

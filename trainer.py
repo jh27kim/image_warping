@@ -18,7 +18,7 @@ from dataclasses import dataclass
 import wandb
 from skimage.metrics import structural_similarity as ssim
 from math import log10, sqrt
-from utils.transformation_utils import *
+from warp_latent.utils.warp_utils.transformation_utils import *
 
 from data.dataloader import CustomImageDataset
 
@@ -99,13 +99,15 @@ class TrainerConfig:
 
    # Fine tuning 
    finetune_latent: bool = False
+   finetune_encoder: bool = True
    finetune_decoder: bool = True
-   reset_decoder: bool = True
-   finetune_decoder_model: str = "lora" # direct, controlnet, lora, controlnet_dec
+   reset_encoder: bool = False # When finetuning/training from scratch a decoder
+   reset_decoder: bool = False # When finetuning/training from scratch a decoder
+   finetune_decoder_model: str = "direct" # direct, controlnet, lora, controlnet_dec
    finetune_latent_model: str = None # cnn, resnet
    control_layers: str = "all" # all, end
    control_scale: float = 1.0
-   lora_rank: int = 32
+   lora_rank: int = 128
 
    # Logging & Checkpoint
    ckpt_path: str = "./ckpt"
@@ -128,6 +130,8 @@ class TrainerConfig:
    SO2_translate: int = 10
    scale: float = 1.0
    perspective_displacement: int = 5
+   interpolation_mode: str = "nearest" # nearest bilinear bicubic
+   padding_mode: str = "zeros" # zeros border reflection
 
    # Test config
    test_batch_size: int = 1
@@ -141,6 +145,7 @@ def train(config):
             warper = VAE_direct(config)
 
         elif config.finetune_decoder_model == "controlnet":
+            # DEPRECATED: Use controlnet_dec
             warper = VAE_controlNet(config)
 
         elif config.finetune_decoder_model == "controlnet_dec":

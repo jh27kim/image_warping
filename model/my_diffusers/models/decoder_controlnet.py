@@ -166,9 +166,11 @@ class Decoder(nn.Module):
         )
 
         self.zero_conv_in = self.make_zero_conv(in_channels, in_channels) # Jaihoon 2023.07.11
+        self.zero_conv_init = self.make_zero_conv(block_out_channels[-1], block_out_channels[-1]) # Jaihoon 2023.07.11
 
         self.mid_block = None
         self.up_blocks = nn.ModuleList([])
+        self.zero_conv_up_blocks = nn.ModuleList([])
 
         # mid
         self.mid_block = UNetMidBlock2D(
@@ -181,6 +183,8 @@ class Decoder(nn.Module):
             resnet_groups=norm_num_groups,
             temb_channels=None,
         )
+        self.zero_conv_mid_block = self.make_zero_conv(block_out_channels[-1], 
+                                                       block_out_channels[-1])
 
         # up
         reversed_block_out_channels = list(reversed(block_out_channels))
@@ -205,9 +209,13 @@ class Decoder(nn.Module):
                 temb_channels=None,
             )
             self.up_blocks.append(up_block)
+
+            zero_conv_mid = self.make_zero_conv(output_channel, output_channel)
+            self.zero_conv_up_blocks.append(zero_conv_mid)
+
             prev_output_channel = output_channel
 
-        self.zero_convs = self.make_zero_conv(output_channel, output_channel) # Jaihoon 2023.07.11
+        self.zero_conv_out = self.make_zero_conv(output_channel, output_channel) # Jaihoon 2023.07.11
 
         # out
         self.conv_norm_out = nn.GroupNorm(num_channels=block_out_channels[0], num_groups=norm_num_groups, eps=1e-6)
@@ -215,6 +223,10 @@ class Decoder(nn.Module):
         self.conv_out = nn.Conv2d(block_out_channels[0], out_channels, 3, padding=1)
 
         self.gradient_checkpointing = False
+
+        # debug
+        print("zero conv weight", torch.sum(self.zero_conv_in.weight))
+        print("conv in weight", torch.sum(self.conv_in.weight), torch.sum(self.conv_in.bias))
 
     def make_zero_conv(self, channels, out_channel):
         return zero_module(conv_nd(self.dims, channels, out_channel, 1, padding=0))
@@ -226,8 +238,11 @@ class Decoder(nn.Module):
         _params += list(self.conv_in.parameters())
         _params += list(self.up_blocks.parameters())
         # Zero convolutions
-        _params += list(self.zero_convs.parameters())
+        _params += list(self.zero_conv_out.parameters())
         _params += list(self.zero_conv_in.parameters())
+        _params += list(self.zero_conv_init.parameters())
+        _params += list(self.zero_conv_mid_block.parameters())
+        _params += list(self.zero_conv_up_blocks.parameters())
         # Mid + Final block
         _params += list(self.conv_norm_out.parameters())
         _params += list(self.conv_out.parameters())
@@ -240,11 +255,14 @@ class Decoder(nn.Module):
 
         sample = z
         sample = self.zero_conv_in(sample)  # Jaihoon 2023.07.11
-        sample += src_latent
+        # TODO: debug
+        print("1st", torch.sum(sample))
+        sample += src_latent # Jaihoon 2023.07.21 
         sample = self.conv_in(sample)
         if control_config.control_layers == "all":
             print("All control", control_config.control_scale)
-            outs["control_initial_layer"].append(sample * control_config.control_scale)
+            outs["control_initial_layer"].append(self.zero_conv_init(sample) * control_config.control_scale)
+            print("2nd", torch.sum(self.zero_conv_init(sample)))
 
         upscale_dtype = next(iter(self.up_blocks.parameters())).dtype
         if self.training and self.gradient_checkpointing:
@@ -266,16 +284,20 @@ class Decoder(nn.Module):
             # middle
             sample = self.mid_block(sample)
             if control_config.control_layers == "all":
-                outs["control_mid_layer"].append(sample * control_config.control_scale)
+                outs["control_mid_layer"].append(self.zero_conv_mid_block(sample) * control_config.control_scale)
+                print("3rd", torch.sum(self.zero_conv_mid_block(sample)))
             sample = sample.to(upscale_dtype)
 
+            
             # up
-            for up_block in self.up_blocks:
+            for up_block, zero_conv_up_block in zip(self.up_blocks, self.zero_conv_up_blocks):
                 sample = up_block(sample)
                 if control_config.control_layers == "all":
-                    outs["control_up_layer"].append(sample * control_config.control_scale)
+                    print("4th", torch.sum(zero_conv_up_block(sample)))
+                    outs["control_up_layer"].append(zero_conv_up_block(sample) * control_config.control_scale)
 
-        sample = self.zero_convs(sample)  # Jaihoon 2023.07.11
+        sample = self.zero_conv_out(sample)  # Jaihoon 2023.07.11
+        print("5th", torch.sum(sample))
         outs["control_last_layer"].append(sample * control_config.control_scale)
 
         # post-process

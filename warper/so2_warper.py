@@ -1,12 +1,8 @@
 from typing import Union, Optional, Tuple
 import torch
-from diffusers import DDIMScheduler
-import numpy as np
-from PIL import Image
-import os
 import torch.nn.functional as F
-from torchgeometry.core.conversions import deg2rad
-from torchgeometry.core.homography_warper import homography_warp
+from utils.warp_utils.torchgeometry.core.conversions import deg2rad
+from utils.warp_utils.torchgeometry.core.homography_warper import homography_warp
 
 from warper.base_warper import Base_warper
 
@@ -270,7 +266,8 @@ class SO2_warper(Base_warper):
                     M: torch.Tensor,
                     dsize: Tuple[int, int],
                     interpolation_mode: Optional[str] = 'bilinear',
-                    padding_mode: Optional[str] = 'zeros') -> torch.Tensor:
+                    padding_mode: Optional[str] = 'zeros',
+                    verbose: bool = False) -> torch.Tensor:
         r"""Applies an affine transformation to a tensor.
 
         The function warp_affine transforms the source tensor using
@@ -319,7 +316,7 @@ class SO2_warper(Base_warper):
         
 
         # launches the warper
-        return self.transform_warp_impl(src, M_3x3, (src.shape[-2:]), dsize, interpolation_mode, padding_mode)
+        return self.transform_warp_impl(src, M_3x3, (src.shape[-2:]), dsize, interpolation_mode, padding_mode, verbose)
 
     def transform_warp_impl(self,
                             src, 
@@ -327,16 +324,20 @@ class SO2_warper(Base_warper):
                             dsize_src, 
                             dsize_dst, 
                             interpolation_mode, 
-                            padding_mode):
+                            padding_mode,
+                            verbose):
         """Compute the transform in normalized cooridnates and perform the warping.
         """
         dst_norm_trans_dst_norm = self.dst_norm_to_dst_norm(dst_pix_trans_src_pix, dsize_src, dsize_dst)
+        if verbose:
+            print("dst_norm_trans_dst_norm", dst_norm_trans_dst_norm)
         
         return homography_warp(patch_src=src, 
                             dst_homo_src=torch.inverse(dst_norm_trans_dst_norm), 
                             dsize=dsize_dst, 
                             mode=interpolation_mode, 
-                            padding_mode=padding_mode)
+                            padding_mode=padding_mode,
+                            verbose=verbose)
 
     def dst_norm_to_dst_norm(self, dst_pix_trans_src_pix, dsize_src, dsize_dst):
         # source and destination sizes
@@ -351,6 +352,10 @@ class SO2_warper(Base_warper):
         src_norm_trans_src_pix = self.normal_transform_pixel(src_h, src_w).to(device).to(dtype)
         src_pix_trans_src_norm = torch.inverse(src_norm_trans_src_pix)
         dst_norm_trans_dst_pix = self.normal_transform_pixel(dst_h, dst_w).to(device).to(dtype)
+
+        print("src_norm_trans_src_pix", src_norm_trans_src_pix)
+        print("src_pix_trans_src_norm", src_pix_trans_src_norm)
+        print("dst_norm_trans_dst_pix", dst_norm_trans_dst_pix)
 
         # compute chain transformations
         dst_norm_trans_src_norm = torch.matmul(

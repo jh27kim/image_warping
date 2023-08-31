@@ -103,6 +103,7 @@ class VAE_direct_config:
 
    # Fine tuning 
    finetune_decoder: bool = True
+   finetune_latent: bool = False
    finetune_decoder_model: str = "lora" # direct, controlnet, lora, controlnet_dec
    lora_rank: int = 16
 
@@ -112,13 +113,13 @@ if __name__ == "__main__":
     from torchinfo import summary
     config = tyro.cli(VAE_direct_config)
     vae = VAE_lora_dec(config)
+    print(vae.autoencoder_pretrained.decoder)
 
     img = Image.open("/home/jh27kim/warp_latent/dataset/afhq/val/cat/image/flickr_cat_000008.jpg")
     img.save("./in.png")
     np_img = (np.array(img) / 255.0).astype(np.float32)
     torch_img = torch.tensor(np_img)
     torch_img = torch_img.permute(2, 0, 1).unsqueeze(0).to(config.device)
-    print(torch.max(torch_img), torch.min(torch_img))
 
     latent = vae.image2latent(torch_img)
     img = vae.latent2image(latent)
